@@ -71,14 +71,15 @@ def get_key(key:str, force_outdated = False):
     data = None
     myidx = shard.get_my_shard()
 
-    data = json.loads(request.get_data())
-    if 'causal-metadata' in data:
-        meta = json.loads(data['causal-metadata'])
-        if int(meta[0]) == myidx:
-            recv_vc = vc.VectorClock(json.loads(data['causal-metadata']))
-            outdated = vc.vc < recv_vc
-    if 'internal' in data: internal = True
-    #else: outdated = False  #TODO Not sure why this line is here
+    if request.get_data() != b'':
+        data = json.loads(request.get_data())
+        if 'causal-metadata' in data:
+            meta = json.loads(data['causal-metadata'])
+            if int(meta[0]) == myidx:
+                recv_vc = vc.VectorClock(json.loads(data['causal-metadata']))
+                outdated = vc.vc < recv_vc
+        if 'internal' in data: internal = True
+        #else: outdated = False  #TODO Not sure why this line is here
 
     if outdated or force_outdated:
         shard.add_server_all(shard.self)
@@ -118,12 +119,13 @@ def delete_key(key:str):
         abort(400)
 
     # See if client provided vector clock
-    data = json.loads(request.get_data())
-    recv_vc = None
-    if 'causal-metadata' in data:
-        meta = json.loads(data['causal-metadata'])
-        if int(meta[0]) == shard.get_my_shard():
-            recv_vc = vc.VectorClock(meta[1])
+    if request.get_data() != b'':
+        data = json.loads(request.get_data())
+        recv_vc = None
+        if 'causal-metadata' in data:
+            meta = json.loads(data['causal-metadata'])
+            if int(meta[0]) == shard.get_my_shard():
+                recv_vc = vc.VectorClock(meta[1])
 
     # If put is in our causal past, then ignore it
     deleted = False
