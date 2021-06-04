@@ -21,7 +21,7 @@ def env_read(tup:tuple) -> dict:
 
 def main():
     # Get ENV Vars
-    evars = ("SOCKET_ADDRESS","VIEW")
+    evars = ("SOCKET_ADDRESS","VIEW", "SHARD_COUNT")
     emap = env_read(evars)
 
     # Self ADDR
@@ -44,7 +44,15 @@ def main():
             shard.master_view.append(Address(data[0], int(data[1])))
     else:
         print("No VIEW EVAR")
-        exit(1)
+        exit(2)
+
+    # Split Shards
+    if "SHARD_COUNT" in emap:
+        sc = int(emap["SHARD_COUNT"])
+        shard.shard_view(sc)
+    else:
+        print("No SHARD_COUNT EVAR")
+        exit(2)
 
     # Setup bind port
     port = Port(len(shard.self.getPort()))

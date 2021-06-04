@@ -8,7 +8,17 @@ import async_timeout
 self = Address("0.0.0.0", 8085)
 master_view = list()
 view = list()
+shards = list()
 atimeout = 2
+
+
+# Sharding -----------------------------------------------------------------
+def shard_view(x: int):
+    shards.clear()
+    for i in range(x):
+        shards.append(list())
+    for i in range(len(view)):
+        shards[i % x].append(view[i])
 
 
 # Invalidate Server --------------------------------------------------------

@@ -235,6 +235,10 @@ def add_view():
     return ({"message":"Replica added successfully to the view"},201)
 
 
+# Shard --------------------------------------------------------------------
+
+
+
 # Internal -----------------------------------------------------------------
 # Internal Put Key - Put a key/val pair in this server
 # From Server
@@ -399,6 +403,14 @@ def forward_req(addr: Address, req) -> Tuple[str,int]:
         return (json.dumps(error_msg), error_code)
 
     return (ret.text, ret.status_code)
+
+def forward_req_shard(key, req) -> Tuple[str,int]:
+    ret = None
+    #determine shard
+    #for serv in shard:
+    #    ret = forward_req(server, req)
+    #    if ret[2] < 500: break
+    #return ret
 
 
 # Debug --------------------------------------------------------------------
