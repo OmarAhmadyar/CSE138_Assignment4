@@ -224,6 +224,15 @@ def get_data():
     for addr in shard.view:
         view.append(str(addr))
 
+    # Shard
+    strshard = list()
+    for sh in shard.shards:
+        temp = list()
+        for serv in sh:
+            temp.append(str(serv))
+        strshard.append(json.dumps(temp))
+    strshard = json.dumps(strshard)
+
     # All together
-    data = {"causal-metadata": str(vc.vc), 'view': json.dumps(view), 'data': json.dumps(store)}
+    data = {"causal-metadata": str(vc.vc), 'view': json.dumps(view), 'data': json.dumps(store), 'shards':strshard}
     return json.dumps(data)
