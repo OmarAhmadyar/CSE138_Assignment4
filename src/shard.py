@@ -85,7 +85,7 @@ async def you_pop_off_me(session, addr):
 
 # Tell Everyone to Populate Themselves Off Me ------------------------------
 def all_pop_off_me():
-    asyncio.run(internal_new_member_all_coroutine())
+    asyncio.run(all_pop_off_me_coroutine())
 
 async def all_pop_off_me_coroutine():
     async with aiohttp.ClientSession() as session:
@@ -93,7 +93,7 @@ async def all_pop_off_me_coroutine():
         for addr in view:
             if addr is None: continue
             elif addr == self: continue
-            else: tasks.append(asyncio.ensure_future(internal_new_member_you_pop(session, addr)))
+            else: tasks.append(asyncio.ensure_future(you_pop_off_me(session, addr)))
         results = await asyncio.gather(*tasks)
 
         # Invalidate anyone who failed
