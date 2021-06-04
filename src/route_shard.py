@@ -30,7 +30,7 @@ def get_shard_members(idn):
     for server in shard.shards[idn]:
         strlist.append(str(server))
     return {'message': 'Members of shard ID retrieved successfully'
-           ,'shard-id-members': json.dumps(strlist)}, 200
+           ,'shard-id-members': strlist}, 200
 
 
 @route.app.route('/key-value-store-shard/shard-id-key-count/<int:idx>', methods=['GET'])
