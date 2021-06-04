@@ -4,6 +4,7 @@ import json
 import aiohttp
 import asyncio
 import async_timeout
+from hashlib import md5
 
 self = Address("0.0.0.0", 8085)
 master_view = list()
@@ -19,6 +20,19 @@ def shard_view(x: int):
         shards.append(list())
     for i in range(len(view)):
         shards[i % x].append(view[i])
+
+def is_my_key(key):
+    return get_shard_key(key) == get_my_shard()
+
+def get_my_shard():
+    for shard_index in range(len(shards)):
+        for server in shards[shard_index]:
+            if server == self:
+                return shard_index
+    raise Exception("get_my_shard(): Could not find shard affiliation")
+
+def get_shard_key(key:str) -> int:
+    return int(md5(key.encode()).hexdigest(), 16) % len(shards)
 
 
 # Invalidate Server --------------------------------------------------------
@@ -123,7 +137,7 @@ async def put_all_coroutine(key, val):
     async with aiohttp.ClientSession() as session:
         tasks = []
         # Send Puts
-        for addr in view:
+        for addr in shards[get_my_shard()]:
             if addr is None: continue
             elif addr == self: continue
             tasks.append(asyncio.ensure_future(put_one(session, addr, key, val)))
@@ -165,7 +179,7 @@ async def del_all_coroutine(key):
     async with aiohttp.ClientSession() as session:
         tasks = []
         # Send Puts
-        for addr in view:
+        for addr in shards[get_my_shard()]:
             if addr is None: continue
             elif addr == self: continue
             tasks.append(asyncio.ensure_future(del_one(session, addr, key)))
