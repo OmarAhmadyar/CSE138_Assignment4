@@ -163,7 +163,7 @@ def int_put_key(key:str):
     try:
         from_spl = data['from'].split(':')
         from_ = Address(from_spl[0], int(from_spl[1]))
-        index = shard.view.index(from_)
+        index = shard.shards[shard.get_my_shard()].index(from_)
 
         if recv_vc < vc.vc: pass
         else: store[key] = data["value"]
@@ -187,7 +187,7 @@ def int_del_key(key:str):
     try:
         from_spl = data['from'].split(':')
         from_ = Address(from_spl[0], int(from_spl[1]))
-        index = shard.view.index(from_)
+        index = shard.shards[shard.get_my_shard()].index(from_)
         vc.vc.clock[index] += 1
 
         if key in store and (not past):
