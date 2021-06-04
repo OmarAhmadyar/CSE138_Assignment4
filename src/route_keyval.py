@@ -73,7 +73,7 @@ def get_key(key:str, force_outdated = False):
 
     if request.get_data() != b'':
         data = json.loads(request.get_data())
-        if 'causal-metadata' in data:
+        if 'causal-metadata' in data and len(data['causal-metadata']) > 1:
             meta = json.loads(data['causal-metadata'])
             if int(meta[0]) == myidx:
                 recv_vc = vc.VectorClock(json.loads(data['causal-metadata']))
@@ -122,7 +122,7 @@ def delete_key(key:str):
     if request.get_data() != b'':
         data = json.loads(request.get_data())
         recv_vc = None
-        if 'causal-metadata' in data:
+        if 'causal-metadata' in data and len(data['causal-metadata']) > 1:
             meta = json.loads(data['causal-metadata'])
             if int(meta[0]) == shard.get_my_shard():
                 recv_vc = vc.VectorClock(meta[1])
