@@ -22,6 +22,8 @@ def run(p: Port = Port(8085)) -> None:
 # From Client
 @app.route('/key-value-store/<string:key>', methods=['PUT'])
 def put_key(key:str):
+    if not shard.is_my_key(key): return forward_keyval_shard(key, request)
+
     data = json.loads(request.get_data())
     val = None
 
@@ -63,6 +65,7 @@ def put_key(key:str):
 # From Client
 @app.route('/key-value-store/<string:key>', methods=['GET'])
 def get_key(key:str, force_outdated = False):
+    if not shard.is_my_key(key): return forward_keyval_shard(key, request)
     if type(key) is not str:
         abort(400)
 
@@ -112,6 +115,7 @@ def get_key(key:str, force_outdated = False):
 # From Client
 @app.route('/key-value-store/<string:key>', methods=['DELETE'])
 def delete_key(key:str):
+    if not shard.is_my_key(key): return forward_keyval_shard(key, request)
     if type(key) is not str:
         abort(400)
 
@@ -236,6 +240,35 @@ def add_view():
 
 
 # Shard --------------------------------------------------------------------
+@app.route('/key-value-store-shard/shard-ids', methods=['GET'])
+def get_shard_ids():
+    return {'message': "Shard IDs retrieved successfully", \
+            'shard-ids': [x for x in range(len(shard.shards))]} \
+            ,200
+
+
+@app.route('/key-value-store-shard/node-shard-id', methods=['GET'])
+def get_shard_id():
+    return {'message': 'Shard ID of the node retrieved successfully'
+           ,'shard-id': str(shard.get_my_shard())}, 200
+
+
+@app.route('/key-value-store-shard/shard-id-members/<int:idn>', methods=['GET'])
+def get_shard_members(idn):
+    strlist = list()
+    for server in shard.shards[idn]:
+        strlist.append(str(server))
+    return {'message': 'Members of shard ID retrieved successfully'
+           ,'shard-id-members': json.dumps(strlist)}, 200
+
+
+@app.route('/key-value-store-shard/shard-id-key-count/<int:idx>', methods=['GET'])
+def get_shard_key_count(idx):
+    if shard.get_my_shard() == idx:
+        return {'message':'Key count of shared ID retrieved successfully'
+               ,'shard-id-key-count': len(store)}, 200
+    else:
+        return forward_req_shard(idx, request)
 
 
 
@@ -404,13 +437,15 @@ def forward_req(addr: Address, req) -> Tuple[str,int]:
 
     return (ret.text, ret.status_code)
 
-def forward_req_shard(key, req) -> Tuple[str,int]:
+def forward_keyval_shard(key, req) -> Tuple[str,int]:
+    return forward_req_shard(shard.get_shard_key(key), req)
+
+def forward_req_shard(serv_id, req) -> Tuple[str,int]:
     ret = None
-    #determine shard
-    #for serv in shard:
-    #    ret = forward_req(server, req)
-    #    if ret[2] < 500: break
-    #return ret
+    for serv in shard.shards[serv_id]:
+        ret = forward_req(serv, req)
+        if ret[1] < 500: break
+    return ret
 
 
 # Debug --------------------------------------------------------------------
