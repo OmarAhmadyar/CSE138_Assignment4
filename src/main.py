@@ -55,12 +55,12 @@ def main():
             shard.master_shards.append(list())
             for serv in sh:
                 shard.master_shards[-1].append(serv)
-    else:
-        print("No SHARD_COUNT EVAR")
-        exit(2)
 
     # Setup Vector Clock for shard
-    vc.vc = vc.VectorClock(len(shard.shards[shard.get_my_shard()]))
+    try:
+        myidx = shard.get_my_shard()
+        vc.vc = vc.VectorClock(len(shard.shards[myidx]))
+    except: pass
 
     # Setup bind port
     port = Port(len(shard.self.getPort()))
@@ -100,11 +100,25 @@ def add_self():
     # TODO Add back into shard
     time.sleep(1)
     data = None
-    for addr in shard.shards[shard.get_my_shard()]:
+    myidx = -1
+    shard_affiliation = False
+
+    try:
+        myidx = shard.get_my_shard()
+        shard_affiliation = True
+    except: myidx = 0
+
+    iterable = None
+    if shard_affiliation: iterable = shard.shards[myidx]
+    else: iterable = shard.view
+
+    for addr in iterable:
         if addr == shard.self: continue
         data = {'socket-address': str(shard.self)}
         try:
             requests.put('http://'+str(addr)+f'/key-value-store-view', data=json.dumps(data), timeout=2)
+            if shard_affiliation:
+                requests.put(f'http://{str(addr)}/key-value-store-shard/add-member/{myidx}', timeout=2, data=json.dumps(data))
         except: continue
         break
 
