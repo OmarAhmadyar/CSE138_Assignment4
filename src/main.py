@@ -32,18 +32,15 @@ def main():
     if "SOCKET_ADDRESS" in emap:
         data = emap["SOCKET_ADDRESS"].split(':')
         shard.self = Address(data[0], int(data[1]))
-        print(f"Self: {shard.self}")
     else:
         print("No SOCKET_ADDRESS")
         exit(2)
 
-    # Setup VIEW and VC
+    # Setup VIEW
     if "VIEW" in emap:
         view = emap["VIEW"].split(',')
-        vc.vc = vc.VectorClock(len(view))
         for server in view:
             data = server.split(':')
-            print(f"VIEW add: {data}")
             shard.view.append(Address(data[0], int(data[1])))
             shard.master_view.append(Address(data[0], int(data[1])))
     else:
@@ -54,9 +51,16 @@ def main():
     if "SHARD_COUNT" in emap:
         sc = int(emap["SHARD_COUNT"])
         shard.shard_view(sc)
+        for sh in shard.shards:
+            shard.master_shards.append(list())
+            for serv in sh:
+                shard.master_shards[-1].append(serv)
     else:
         print("No SHARD_COUNT EVAR")
         exit(2)
+
+    # Setup Vector Clock for shard
+    vc.vc = vc.VectorClock(len(shard.shards[shard.get_my_shard()]))
 
     # Setup bind port
     port = Port(len(shard.self.getPort()))
@@ -70,6 +74,14 @@ def main():
         threads.append(x)
         x.start()
 
+    # Print Data Before Start
+    print(f"SELF: {str(shard.self)}")
+    for serv in shard.view:
+        print(f"VIEW: {str(serv)}")
+    for i in range(len(shard.shards)):
+        for serv in shard.shards[i]:
+            print(f"SHARD {i}: {str(serv)}")
+
     # Run Server
     route.run(port)
 
@@ -79,6 +91,13 @@ def main():
 
 
 def add_self():
+    """
+    on wakeup add self into view
+
+    This is for whenever the server crashes and comes back to life it can
+    add itself back into its old position
+    """
+    # TODO Add back into shard
     time.sleep(1)
     data = None
     for addr in shard.shards[shard.get_my_shard()]:
