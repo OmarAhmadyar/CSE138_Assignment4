@@ -120,9 +120,12 @@ def reshard():
     # TELL EVERYONE TO POP THEMSELVES OFF ME
     shard.all_pop_off_me()
     # DISCARD ALL EXCESSIVE KEYS IN MY STORE
+    toremove = list()
     for key in route_keyval.store:
-        if not is_my_key(key):
-            del route_keyval.store[key]
+        if not shard.is_my_key(key):
+            toremove.append(key)
+    for key in toremove:
+        del route_keyval.store[key]
 
     return {'message': 'Resharding done successfully'}, 200
 
