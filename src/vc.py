@@ -9,6 +9,11 @@ class VectorClock:
             self.clock = list()
             for elem in x:
                 self.clock.append(elem)
+        elif isinstance(x, str):
+            l = json.loads(x)
+            self.clock = list()
+            for elem in l:
+                self.clock.append(elem)
         else:
             raise Exception("Bad VectorClock construction")
 
