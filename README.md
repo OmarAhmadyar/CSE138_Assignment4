@@ -43,13 +43,11 @@ Ryan Steinwert
 - Referenced for simple multithreading
 - Used in main.py to add replicas back to the view when they come back online 
 
+[MD5 hash in Python](https://www.geeksforgeeks.org/md5-hash-python/)
+- Referenced for the implementation of MD5 hashing in python, using the hashlib library
+
 apropos docker
 - Consulted for information on the use of docker
 
 man docker ...
 - Consulted for specific usage of the docker command
-
-
-# TODO
-add citation for MD5 hashing
-https://www.geeksforgeeks.org/md5-hash-python/
