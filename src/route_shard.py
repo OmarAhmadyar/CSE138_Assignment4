@@ -95,7 +95,8 @@ def reshard():
 
     # TODO ERROR IF INSUFFICIENT NODES FOR SHARD_COUNT
     view_count = 0;
-    for serv in shard.view: if serv is not None: view_count += 1
+    for serv in shard.view:
+        if serv is not None: view_count += 1
     if view_count // shard_count < 2:
         return {'message':'Not enough nodes to provide fault-tolerance with the given shard count!'}, 400
 
