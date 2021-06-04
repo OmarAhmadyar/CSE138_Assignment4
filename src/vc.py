@@ -18,8 +18,9 @@ class VectorClock:
             raise Exception("Bad VectorClock construction")
 
     def __lt__(self, that):   # happens before
-        if len(self.clock) != len(that.clock):
-            raise Exception("Comparing Vector Clocks of different sizes")
+        if len(self.clock) > len(that.clock): return False
+        #if len(self.clock) > len(that.clock):
+        #    raise Exception(f"Comparing Vector Clocks of incompatible size: {str(self)} < {str(that)}")
         smaller = False
         for i in range(len(self.clock)):
             if self.clock[i] < that.clock[i]:
@@ -42,9 +43,9 @@ class VectorClock:
         self.clock.append(0)
 
     def max(self,other):
-        if len(self.clock) != len(other.clock):
-            raise Exception("Cannot max two clocks of different sizes")
-        for i in range(len(self.clock)):
+        #if len(self.clock) != len(other.clock):
+        #    raise Exception(f"Cannot max two clocks of different sizes: {str(self)} < {str(other)}")
+        for i in range(min(len(self.clock), len(other.clock))):
             self.clock[i] = max(other.clock[i], self.clock[i])
 
 vc = VectorClock(0)
