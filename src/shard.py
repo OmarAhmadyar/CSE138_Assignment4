@@ -35,6 +35,41 @@ def get_shard_key(key:str) -> int:
     return int(md5(key.encode()).hexdigest(), 16) % len(shards)
 
 
+def internal_new_member_all(addr, shard_id):
+    asyncio.run(internal_new_member_all_coroutine(addr, shard_id))
+
+async def internal_new_member_all_coroutine(add, shard_id):
+    async with aiohttp.ClientSession() as session:
+        tasks = []
+        for addr in view:
+            if addr is None: continue
+            elif addr == self: continue
+            elif addr == add: continue
+            tasks.append(asyncio.ensure_future(add_server_one(session, addr, add, shard_id)))
+        results = await asyncio.gather(*tasks)
+
+        # Invalidate anyone who failed
+        for addr in results:
+            if addr is None: continue
+            for i in range(len(view)):
+                if view[i] == addr:
+                    view[i] = None
+                    break
+            await invalidate_server_coroutine(addr)
+
+
+async def internal_new_member_one(session, toserv, addr, shard_id):
+    data_ = json.dumps({"socket-address": str(add)})
+    try:
+        async with async_timeout.timeout(atimeout):
+            async with session.put('http://'+str(toserv)+f'/internal/add-member/{str(shard_id)}', data=data_) as resp:
+                data = await resp.json()
+                if 'success' in data and data['success']:
+                    return None
+    except: pass
+    return toserv
+
+
 # Invalidate Server --------------------------------------------------------
 # Remove a server from the view of all servers (except the one being removed)
 def invalidate_server(addr: Address):
