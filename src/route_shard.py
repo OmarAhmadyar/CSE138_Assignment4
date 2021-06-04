@@ -71,7 +71,7 @@ def add_member(shard_id):
                    )
     # ADD TO VIEW IF NOT ALREADY THERE
     # TELL EVERYONE ELSE TO ADD IT TO THEIR VIEW
-    add_server_all(addr)
+    shard.add_server_all(addr)
 
     # Add for everyone
     shard.internal_new_member_all(addr, shard_id)
