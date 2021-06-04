@@ -6,19 +6,23 @@ Omar Ahmadyar
    - Vector clock/causal metadata updates (maintaining accurate vector clocks)
 - Sharding implementation
    - Asyncronous communication between shards in shard.py
+   - Hashing of keys to their respective shard, keeping track of shard ids
+   - Resharding implementation
    - Maintence of the view
 - Testing/debugging of python implementation
    - Running and testing python nodes directly
 
 Ryan Steinwert
-- Routing of requests in route.py
+- Routing of requests in route*.py
    - Handling client requests using Flask routing
-   - Responding to requests with json formatting
+   - Responding to requests with proper json formatting
 - Docker file
 - Documentation (readme and in-code)
 - Testing/debugging of concurrent nodes and docker implementation
    - Running docker containers on subnet with manual testing
    - Using provided test suite
+
+Pair programming was used for a significant percentage of code
 
 ## Acknowledgements
 - N/A
