@@ -87,6 +87,10 @@ def add_view():
     else:
         shard.view.append(addr)
         shard.master_view.append(addr)
+
+    # Tell All Others to Add Server to View
+    shard.add_server_all(addr)
+
     return ({"message":"Replica added successfully to the view"},201)
 
 # Internal delete view/server - Delete a server from the view on this server
