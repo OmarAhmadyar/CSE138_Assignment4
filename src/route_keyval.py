@@ -78,7 +78,7 @@ def get_key(key:str, force_outdated = False):
         if 'causal-metadata' in data and len(data['causal-metadata']) > 1:
             meta = json.loads(data['causal-metadata'])
             if int(meta[0]) == myidx:
-                recv_vc = vc.VectorClock(json.loads(data['causal-metadata']))
+                recv_vc = vc.VectorClock(meta[1])
                 outdated = vc.vc < recv_vc
         if 'internal' in data: internal = True
         #else: outdated = False  #TODO Not sure why this line is here
