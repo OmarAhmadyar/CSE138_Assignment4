@@ -16,6 +16,7 @@ def run(p: Port = Port(8085)) -> None:
         raise Exception("route.py:run(...) supplied non Port type argument")
     app.run('0.0.0.0', len(p))
 
+
 def forward_req(addr: Address, req) -> Tuple[str,int]:
     error_msg = {"error" : "Main instance is down", "message" : f"Error in {str(req.method)}"}
     error_code = 503
@@ -34,8 +35,10 @@ def forward_req(addr: Address, req) -> Tuple[str,int]:
 
     return (ret.text, ret.status_code)
 
+
 def forward_keyval_shard(key, req) -> Tuple[str,int]:
     return forward_req_shard(shard.get_shard_key(key), req)
+
 
 def forward_req_shard(serv_id, req) -> Tuple[str,int]:
     ret = None
