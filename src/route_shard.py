@@ -70,10 +70,19 @@ def add_member(shard_id):
                    ,  404
                    )
     # ADD TO VIEW IF NOT ALREADY THERE
+    if not (addr in shard.view):
+        if addr in shard.master_view:
+            idx = shard.master_view.index(addr)
+            assert(shard.view[idx] is None)
+            shard.view[idx] = addr
+        else:
+            shard.master_view.append(addr)
+            shard.view.append(addr)
+
     # TELL EVERYONE ELSE TO ADD IT TO THEIR VIEW
     shard.add_server_all(addr)
 
-    # Add for everyone
+    # TELL EVERYONE ELSE (INCLUDING YOURSELF) THAT HE IS IN SHARD_ID
     shard.internal_new_member_all(addr, shard_id)
 
     return ({'message':'Node added successfully to shard'}, 200)
@@ -107,6 +116,7 @@ def int_add_member(shard_id:int):
         if not reinstate:
             shard.master_shards[shard_id].append(addr)
             shard.shards[shard_id].append(addr)
+            vc.vc.add()
         return {'success': True}
     except: pass
     return {'success': False}
@@ -121,34 +131,48 @@ def pop_yourself():
 
     data = json.loads(ret.text)
 
-    # VC
-    vc.vc = vc.VectorClock(json.loads(data['causal-metadata']))
-
     # VIEW
-    shard.view.clear()
-    shard.master_view.clear()
-    for addrstr in json.loads(data['view']):
-        spl = addrstr.split(':')
-        shard.view.append(Address(spl[0], int(spl[1])))
-        shard.master_view.append(Address(spl[0], int(spl[1])))
+    shard.view = load_view(data['view'])
+    shard.master_view = load_view(data['mview'])
 
-    # STORE
+    # STORE -- ONLY STORE THOSE WHICH BELONG TO YOU
     route_keyval.store.clear()
     ostore = json.loads(data['data'])
+    myidx = shard.get_my_shard()
     for key in ostore:
-        route_keyval.store[key] = ostore[key]
+        if shard.get_shard_key(key) == myidx:
+            route_keyval.store[key] = ostore[key]
 
     # SHARDS
-    shard.shards.clear()
-    shard.master_shards.clear()
-    shardstr = json.loads(data['shards'])
-    for shstr in shardstr:
-        shard.shards.append(list())
-        shard.master_shards.append(list())
-        sh = json.loads(shstr)
-        for servstr in sh:
-            spl = servstr.split(':')
-            shard.shards[-1].append(Address(spl[0], int(spl[1])))
-            shard.master_shards[-1].append(Address(spl[0], int(spl[1])))
+    shard.shards = load_shards(json.loads(data['shards']))
+    shard.master_shards = load_shards(json.loads(data['mshards']))
+
+    # VC
+    meta = json.loads(data['causal-metadata'])
+    assert(int(meta[0]) == shard.get_my_shard())
+    vc.vc = vc.VectorClock(meta[1])
 
     return 'NOICE'
+
+def load_shards(strshard):
+    result = list()
+    for shstr in strshard:
+        result.append(list())
+        sh = json.loads(shstr)
+        for servstr in sh:
+            if servstr == '':
+                result[-1].append(None)
+            else:
+                spl = servstr.split(':')
+                result[-1].append(Address(spl[0], int(spl[1])))
+    return result
+
+def load_view(strview):
+    result = list()
+    for addrstr in json.loads(strview):
+        if addrstr is None: result.append('')
+        else:
+            spl = addrstr.split(':')
+            result.append(Address(spl[0], int(spl[1])))
+    return result
+

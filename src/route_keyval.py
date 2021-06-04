@@ -26,12 +26,12 @@ def put_key(key:str):
     else: return ({"error" : "Value is missing", "message" : "Error in PUT"}, 400)
 
     # See if client provided vector clock
+    myidx = shard.get_my_shard()
     recv_vc = None
-    try:
-        if 'causal-metadata' in data:
-            recv_vc = vc.VectorClock(json.loads(data['causal-metadata']))
-    except:
-        recv_vc = None
+    if 'causal-metadata' in data:
+        meta = json.loads(data['causal-metadata'])
+        if int(meta[0]) == myidx:
+            recv_vc = vc.VectorClock(json.loads(meta[1]))
 
     # Update your past events
     if recv_vc is not None and vc.vc < recv_vc:
@@ -50,7 +50,7 @@ def put_key(key:str):
         index = shard.view.index(shard.self)
         vc.vc.clock[index] += 1
 
-    good['causal-metadata'] = str(vc.vc)
+    good['causal-metadata'] = [myidx, str(vc.vc)]
     return (good, 200 if good["replaced"] else 201)
 
 
@@ -62,21 +62,23 @@ def get_key(key:str, force_outdated = False):
     if type(key) is not str:
         abort(400)
 
-    # if data is outdated:
+    # IF DATA IS OUTDATED:
         # if internal call: jump to next server in view
         # else: jump to first server in view
     recv_vc = None
     outdated = False
     internal = False
     data = None
-    try:
-        data = json.loads(request.get_data())
-        if 'causal-metadata' in data:
+    myidx = shard.get_my_shard()
+
+    data = json.loads(request.get_data())
+    if 'causal-metadata' in data:
+        meta = json.loads(data['causal-metadata'])
+        if int(meta[0]) == myidx:
             recv_vc = vc.VectorClock(json.loads(data['causal-metadata']))
             outdated = vc.vc < recv_vc
-        if 'internal' in data: internal = True
-        else: outdated = False
-    except: outdated = False
+    if 'internal' in data: internal = True
+    #else: outdated = False  #TODO Not sure why this line is here
 
     if outdated or force_outdated:
         shard.add_server_all(shard.self)
@@ -96,12 +98,15 @@ def get_key(key:str, force_outdated = False):
                     break
         if result is not None and result.status_code == 200:
             store[key] = json.loads(result.text)['value']
-            vc.vc.max(vc.VectorClock(json.loads(json.loads(result.text)['causal-metadata'])))
+            meta = json.loads(result.text)['causal-metadata']
+            vc.vc.max(vc.VectorClock(json.loads(meta[1])))
 
+    # Causal Metadata
+    causal_meta = json.dumps([myidx, str(vc.vc)])
     if key in store:
-        return ({"doesExist":True,"message":"Retrieved successfully","value":store[key], 'causal-metadata':str(vc.vc)},200)
+        return ({"doesExist":True,"message":"Retrieved successfully","value":store[key], 'causal-metadata':causal_meta},200)
     else:
-        return ({"doesExist":False,"error":"Key does not exist","message":"Error in GET",'causal-metadata':str(vc.vc)},404)
+        return ({"doesExist":False,"error":"Key does not exist","message":"Error in GET",'causal-metadata':causal_meta},404)
 
 
 # Delete key - Remove a value mroute.apping for a key
@@ -115,11 +120,10 @@ def delete_key(key:str):
     # See if client provided vector clock
     data = json.loads(request.get_data())
     recv_vc = None
-    try:
-        if 'causal-metadata' in data:
-            recv_vc = vc.VectorClock(json.loads(data['causal-metadata']))
-    except:
-        recv_vc = None
+    if 'causal-metadata' in data:
+        meta = json.loads(data['causal-metadata'])
+        if int(meta[0]) == shard.get_my_shard():
+            recv_vc = vc.VectorClock(meta[1])
 
     # If put is in our causal past, then ignore it
     deleted = False
@@ -138,7 +142,7 @@ def delete_key(key:str):
     else:
         retVal = {"doesExist":False,"error":"Key does not exist","message":"Error in DELETE"}
         retCode = 404
-    retval['causal-metadata'] = str(vc.vc)
+    retval['causal-metadata'] = json.dumps([shard.get_my_shard(), str(vc.vc)])
     return retVal, retCode
 
 # Internal -----------------------------------------------------------------
@@ -148,7 +152,8 @@ def delete_key(key:str):
 @route.app.route('/internal/kvs/<string:key>', methods=['PUT'])
 def int_put_key(key:str):
     data = json.loads(request.get_data())
-    recv_vc = vc.VectorClock(json.loads(data['causal-metadata']))
+    meta = json.loads(data['causal-metadata'])
+    recv_vc = vc.VectorClock(meta[1])
 
     try:
         from_spl = data['from'].split(':')
@@ -170,7 +175,8 @@ def int_put_key(key:str):
 def int_del_key(key:str):
     data = json.loads(request.get_data())
 
-    recv_vc = vc.VectorClock(json.loads(data['causal-metadata']))
+    meta = json.loads(data['causal-metadata'])
+    recv_vc = vc.VectorClock(meta[1])
     past = recv_vc < vc.vc
 
     try:
@@ -188,8 +194,10 @@ def int_del_key(key:str):
 
 # Internal populate - This server is going to be populated with key/val pairs and a new view
 # From Server
+# DEPRECATED -- Use get_data() below instead
 @route.app.route('/internal/populate', methods=['PUT'])
 def int_populate():
+    print("USAGE OF DEPRECATED FUNCTION")
     data = None
     store.clear()
     shard.view.clear()
@@ -210,7 +218,8 @@ def int_populate():
             else: shard.view.append(None)
 
         # Vector Clock
-        vc.vc = vc.VectorClock(json.loads(data['causal-metadata']))
+        meta = json.loads(data['causal-metadata'])
+        vc.vc = vc.VectorClock(meta[1])
     except:
         return {'success':False}, 400
 
@@ -222,17 +231,39 @@ def get_data():
     # View
     view = list()
     for addr in shard.view:
-        view.append(str(addr))
+        if addr is not None: view.append(str(addr))
+        else: view.append('')
+
+    # Master View
+    mview = list()
+    for addr in shard.master_view:
+        mview.append(str(addr))
 
     # Shard
     strshard = list()
     for sh in shard.shards:
         temp = list()
         for serv in sh:
-            temp.append(str(serv))
+            if serv is None: temp.append('')
+            else: temp.append(str(serv))
         strshard.append(json.dumps(temp))
     strshard = json.dumps(strshard)
 
+    # Master Shard
+    masterstrshard = list()
+    for sh in shard.master_shards:
+        temp = list()
+        for serv in sh:
+            temp.append(str(serv))
+        masterstrshard.append(json.dumps(temp))
+    masterstrshard = json.dumps(masterstrshard)
+
     # All together
-    data = {"causal-metadata": str(vc.vc), 'view': json.dumps(view), 'data': json.dumps(store), 'shards':strshard}
+    data = {  "causal-metadata": json.dumps([shard.get_my_shard(), str(vc.vc)])
+           ,  'view': json.dumps(view)
+           ,  'mview':json.dumps(mview)
+           ,  'shards':strshard
+           ,  'mshards': masterstrshard
+           ,  'data': json.dumps(store)
+           }
     return json.dumps(data)

@@ -44,7 +44,7 @@ async def internal_new_member_all_coroutine(add, shard_id):
         tasks = []
         for addr in view:
             if addr is None: continue
-            #elif addr == self: continue #TODO permit adding to self
+            #elif addr == self: continue #permit adding to self
             elif addr == add: tasks.append(asyncio.ensure_future(internal_new_member_you_pop(session, addr)))
             else: tasks.append(asyncio.ensure_future(internal_new_member_one(session, addr, add, shard_id)))
         results = await asyncio.gather(*tasks)
@@ -203,7 +203,8 @@ async def put_all_coroutine(key, val):
 
 # Send an internal put to a single server to put a new key/val
 async def put_one(session, addr, key, val):
-    data = json.dumps({"value": str(val), "from": str(self), "causal-metadata": str(vc.vc)})
+    myidx = get_my_shard()
+    data = json.dumps({"value": str(val), "from": str(self), "causal-metadata": json.dumps([myidx, str(vc.vc)])})
     try:
         async with async_timeout.timeout(atimeout):
             async with session.put('http://'+str(addr)+f'/internal/kvs/{key}', data=data) as resp:
@@ -245,7 +246,8 @@ async def del_all_coroutine(key):
 
 # Send an internal delete to a single server to delete a key/val mapping
 async def del_one(session, addr, key):
-    data_ = json.dumps({"from": str(self), "causal-metadata": str(vc.vc)})
+    myidx = get_my_shard()
+    data_ = json.dumps({"from": str(self), "causal-metadata": json.dumps([myidx, str(vc.vc)])})
     try:
         async with async_timeout.timeout(atimeout):
             async with session.delete('http://'+str(addr)+f'/internal/kvs/{key}', data=data_) as resp:
