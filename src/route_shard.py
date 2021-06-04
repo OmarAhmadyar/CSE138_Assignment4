@@ -41,8 +41,10 @@ def get_shard_key_count(idx):
     else:
         return route.forward_req_shard(idx, request)
 
+
 @route.app.route('/key-value-store-shard/add-member/<int:shard_id>', methods=['PUT'])
 def add_member(shard_id):
+    # IF SELF NOT IN SHARD THEN FORWARD
     if shard.get_my_shard() != shard_id:
         return route.forward_req_shard(shard_id, request)
 
@@ -67,27 +69,15 @@ def add_member(shard_id):
                       }
                    ,  404
                    )
+    # ADD TO VIEW IF NOT ALREADY THERE
+    # TELL EVERYONE ELSE TO ADD IT TO THEIR VIEW
+    add_server_all(addr)
 
     # Add for everyone
-    shard.shards[shard_id].route.append(addr)
     shard.internal_new_member_all(addr, shard_id)
 
-    # Populate
-    viewlist = list()
-    for addr in shard.view:
-        if addr is None:
-            viewlist.append('')
-        else: viewlist.append(str(addr))
-
-    shardlist = list()
-    for shart in shard.shards:
-        shardlist.append(list())
-        for serv in shart:
-            shardlist[-1].append(str(serv))
-    popdata = {'store': json.dumps(route_keyval.store), 'view':json.dumps(viewlist), 'causal-metadata':str(vc.vc), 'shards': json.dumps(shardlist)}
-
-    requests.put('http://' + str(addr) + '/internal/populate/', data=json.dumps(popdata))
     return ({'message':'Node added successfully to shard'}, 200)
+
 
 @route.app.route('/internal/add-member/<int:shard_id>', methods=['PUT'])
 def int_add_member(shard_id:int):
@@ -95,8 +85,70 @@ def int_add_member(shard_id:int):
         straddr = json.loads(request.get_data())['socket-address']
         spl = straddr.split(':')
         addr = Address(spl[0], int(spl[1]))
-        shard.shards[shard_id].route.append(addr)
+
+        # Check if he's already there
+        for serv in shard.shards[shard_id]:
+            if serv == addr: abort(404)
+
+        # Remove him if he's in any other shards
+        for group in range(len(shard.shards)):
+            for i in range(len(shard.shards[group])):
+                if shard.shards[group][i] == addr:
+                    shard.shards[group][i] = None
+
+        # Reinstate him if he previously belonged to this shard
+        reinstate = False
+        for i in range(len(shard.master_shards[shard_id])):
+            if shard.master_shards[shard_id][i] == addr:
+                shard.shards[shard_id][i] = addr
+                reinstate = True
+
+        # Add him if he's brand new to this shard
+        if not reinstate:
+            shard.master_shards[shard_id].append(addr)
+            shard.shards[shard_id].append(addr)
         return {'success': True}
     except: pass
     return {'success': False}
 
+
+@route.app.route('/internal/add-member/YOU', methods=['PUT'])
+def pop_yourself():
+    data = json.loads(request.get_data())
+    spl = data['callback'].split(':')
+    addr = Address(spl[0], int(spl[1]))
+    ret = requests.get(f'http://{str(addr)}/internal/populate', timeout=route.timeout)
+
+    data = json.loads(ret.text)
+
+    # VC
+    vc.vc = vc.VectorClock(json.loads(data['causal-metadata']))
+
+    # VIEW
+    shard.view.clear()
+    shard.master_view.clear()
+    for addrstr in json.loads(data['view']):
+        spl = addrstr.split(':')
+        shard.view.append(Address(spl[0], int(spl[1])))
+        shard.master_view.append(Address(spl[0], int(spl[1])))
+
+    # STORE
+    route_keyval.store.clear()
+    ostore = json.loads(data['data'])
+    for key in ostore:
+        route_keyval.store[key] = ostore[key]
+
+    # SHARDS
+    shard.shards.clear()
+    shard.master_shards.clear()
+    shardstr = json.loads(data['shards'])
+    for shstr in shardstr:
+        shard.shards.append(list())
+        shard.master_shards.append(list())
+        sh = json.loads(shstr)
+        for servstr in sh:
+            spl = servstr.split(':')
+            shard.shards[-1].append(Address(spl[0], int(spl[1])))
+            shard.master_shards[-1].append(Address(spl[0], int(spl[1])))
+
+    return 'NOICE'
