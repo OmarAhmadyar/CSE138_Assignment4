@@ -2,7 +2,6 @@ from flask import Flask, abort, request
 from addr import Address, Port
 from sys import exit
 import shard
-import vc
 import requests
 import json
 from typing import Tuple
@@ -86,17 +85,8 @@ def add_view():
         assert(shard.view[index] is None)
         shard.view[index] = shard.master_view[index]
     else:
-        vc.vc.add()
         shard.view.append(addr)
         shard.master_view.append(addr)
-    #viewlist = list()
-    #for addr in shard.view:
-    #    if addr is None:
-    #        viewlist.append('')
-    #    else: viewlist.append(str(addr))
-    #popdata = {"store": json.dumps(store), "view": json.dumps(viewlist), "causal-metadata":str(vc.vc)}
-    #requests.put(f"http://{str(addr)}/internal/populate", data=json.dumps(popdata))
-    #shard.add_server_all(addr)
     return ({"message":"Replica added successfully to the view"},201)
 
 # Internal delete view/server - Delete a server from the view on this server
@@ -149,7 +139,6 @@ def int_add_view():
         assert (shard.view[index] is None)
         shard.view[index] = shard.master_view[index]
     else:
-        vc.vc.add()
         shard.view.append(addr)
         shard.master_view.append(addr)
     return {'success': True}
