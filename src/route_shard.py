@@ -88,6 +88,44 @@ def add_member(shard_id):
     return ({'message':'Node added successfully to shard'}, 200)
 
 
+@route.app.route('/key-value-store-shard/reshard', methods=['PUT'])
+def reshard():
+    data = json.loads(request.get_data())
+    shard_count = int(data['shard-count'])
+
+    # TODO ERROR IF INSUFFICIENT NODES FOR SHARD_COUNT
+    view_count = 0;
+    for serv in shard.view: if serv is not None: view_count += 1
+    if view_count // shard_count < 2:
+        return {'message':'Not enough nodes to provide fault-tolerance with the given shard count!'}, 400
+
+    # GET STORE FROM EVERY SINGLE GROUP
+    ostores = list()
+    for shard_group in shard.shards:
+        for serv in shard_group:
+            ret = None
+            try: ret = requests.get(f'http://{str(serv)}/internal/populate', timeout=shard.atimeout)
+            except: continue
+            ostores.append(json.loads(json.loads(ret.text)['data']))
+            break
+
+    # UNION SELF STORE W/ EACH GROUP STORE
+    for ostore in ostores:
+        route_keyval.store.update(ostore)
+
+    # SELF STORE NOW HAS ALL KEY/VAL PAIRS
+    # RESHARD LOCALLY
+    shard.shard_view(shard_count)
+    # TELL EVERYONE TO POP THEMSELVES OFF ME
+    shard.all_pop_off_me()
+    # DISCARD ALL EXCESSIVE KEYS IN MY STORE
+    for key in route_keyval.store:
+        if not is_my_key(key):
+            del route_keyval.store[key]
+
+    return {'message': 'Resharding done successfully'}, 200
+
+
 @route.app.route('/internal/add-member/<int:shard_id>', methods=['PUT'])
 def int_add_member(shard_id:int):
     try:
