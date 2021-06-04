@@ -28,7 +28,7 @@ def put_key(key:str):
     # See if client provided vector clock
     myidx = shard.get_my_shard()
     recv_vc = None
-    if 'causal-metadata' in data:
+    if 'causal-metadata' in data and len(data['causal-metadata']) > 1:
         meta = json.loads(data['causal-metadata'])
         if int(meta[0]) == myidx:
             recv_vc = vc.VectorClock(json.loads(meta[1]))
