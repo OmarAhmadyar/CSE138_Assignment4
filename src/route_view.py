@@ -87,13 +87,13 @@ def add_view():
         shard.view[index] = shard.master_view[index]
     else:
         vc.vc.add()
-        shard.view.route.append(addr)
-        shard.master_view.route.append(addr)
+        shard.view.append(addr)
+        shard.master_view.append(addr)
     #viewlist = list()
     #for addr in shard.view:
     #    if addr is None:
-    #        viewlist.route.append('')
-    #    else: viewlist.route.append(str(addr))
+    #        viewlist.append('')
+    #    else: viewlist.append(str(addr))
     #popdata = {"store": json.dumps(store), "view": json.dumps(viewlist), "causal-metadata":str(vc.vc)}
     #requests.put(f"http://{str(addr)}/internal/populate", data=json.dumps(popdata))
     #shard.add_server_all(addr)
@@ -150,8 +150,8 @@ def int_add_view():
         shard.view[index] = shard.master_view[index]
     else:
         vc.vc.add()
-        shard.view.route.append(addr)
-        shard.master_view.route.append(addr)
+        shard.view.append(addr)
+        shard.master_view.append(addr)
     return {'success': True}
 
 
