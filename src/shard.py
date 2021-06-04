@@ -8,6 +8,7 @@ from hashlib import md5
 
 self = Address("0.0.0.0", 8085)
 master_view = list()
+master_shards = list()
 view = list()
 shards = list()
 atimeout = 2
@@ -43,9 +44,9 @@ async def internal_new_member_all_coroutine(add, shard_id):
         tasks = []
         for addr in view:
             if addr is None: continue
-            elif addr == self: continue
-            elif addr == add: continue
-            tasks.append(asyncio.ensure_future(internal_new_member_one(session, addr, add, shard_id)))
+            #elif addr == self: continue #TODO permit adding to self
+            elif addr == add: tasks.append(asyncio.ensure_future(internal_new_member_you_pop(session, addr)))
+            else: tasks.append(asyncio.ensure_future(internal_new_member_one(session, addr, add, shard_id)))
         results = await asyncio.gather(*tasks)
 
         # Invalidate anyone who failed
@@ -68,6 +69,18 @@ async def internal_new_member_one(session, toserv, addr, shard_id):
                     return None
     except: pass
     return toserv
+
+async def internal_new_member_you_pop(session, addr):
+    data_ = json.dumps({"callback": str(self)})
+    try:
+        async with async_timeout.timeout(atimeout):
+            async with session.put('http://'+str(addr)+f'/internal/add-member/YOU', data=data_) as resp:
+                data = await resp.json()
+                if 'success' in data and data['success']:
+                    return None
+
+    except: pass
+    return None
 
 
 # Invalidate Server --------------------------------------------------------
