@@ -45,7 +45,7 @@ async def internal_new_member_all_coroutine(add, shard_id):
         for addr in view:
             if addr is None: continue
             #elif addr == self: continue #permit adding to self
-            elif addr == add: tasks.append(asyncio.ensure_future(internal_new_member_you_pop(session, addr)))
+            elif addr == add: tasks.append(asyncio.ensure_future(you_pop_off_me(session, addr)))
             else: tasks.append(asyncio.ensure_future(internal_new_member_one(session, addr, add, shard_id)))
         results = await asyncio.gather(*tasks)
 
@@ -70,7 +70,7 @@ async def internal_new_member_one(session, toserv, addr, shard_id):
     except: pass
     return toserv
 
-async def internal_new_member_you_pop(session, addr):
+async def you_pop_off_me(session, addr):
     data_ = json.dumps({"callback": str(self)})
     try:
         async with async_timeout.timeout(atimeout):
@@ -81,6 +81,29 @@ async def internal_new_member_you_pop(session, addr):
 
     except: pass
     return None
+
+
+# Tell Everyone to Populate Themselves Off Me ------------------------------
+def all_pop_off_me():
+    asyncio.run(internal_new_member_all_coroutine())
+
+async def all_pop_off_me_coroutine():
+    async with aiohttp.ClientSession() as session:
+        tasks = []
+        for addr in view:
+            if addr is None: continue
+            elif addr == self: continue
+            else: tasks.append(asyncio.ensure_future(internal_new_member_you_pop(session, addr)))
+        results = await asyncio.gather(*tasks)
+
+        # Invalidate anyone who failed
+        for addr in results:
+            if addr is None: continue
+            for i in range(len(view)):
+                if view[i] == addr:
+                    view[i] = None
+                    break
+            await invalidate_server_coroutine(addr)
 
 
 # Invalidate Server --------------------------------------------------------
