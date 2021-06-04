@@ -50,7 +50,8 @@ def put_key(key:str):
         index = shard.view.index(shard.self)
         vc.vc.clock[index] += 1
 
-    good['causal-metadata'] = [myidx, str(vc.vc)]
+    good['causal-metadata'] = json.dumps([myidx, str(vc.vc)])
+    good['shard-id'] = shard.get_my_shard()
     return (good, 200 if good["replaced"] else 201)
 
 
@@ -140,12 +141,13 @@ def delete_key(key:str):
     retval = dict()
     retCode = 200
     if deleted:
-        retVal = {"doesExist":True,"message":"Deleted successfully"}
+        retval = {"doesExist":True,"message":"Deleted successfully"}
     else:
-        retVal = {"doesExist":False,"error":"Key does not exist","message":"Error in DELETE"}
+        retval = {"doesExist":False,"error":"Key does not exist","message":"Error in DELETE"}
         retCode = 404
     retval['causal-metadata'] = json.dumps([shard.get_my_shard(), str(vc.vc)])
-    return retVal, retCode
+    retval['shard-id'] = shard.get_my_shard()
+    return retval, retCode
 
 # Internal -----------------------------------------------------------------
 # Internal Put Key - Put a key/val pair in this server
