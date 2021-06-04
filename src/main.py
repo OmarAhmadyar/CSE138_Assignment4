@@ -2,12 +2,16 @@ from os import getenv
 import time
 from sys import argv, exit
 import route
+import route_shard
+import route_view
+import route_keyval
 import requests
 import json
 import shard
 from addr import Address, Port
 import vc
 import threading
+
 
 
 def env_read(tup:tuple) -> dict:
