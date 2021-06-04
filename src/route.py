@@ -228,14 +228,14 @@ def add_view():
         vc.vc.add()
         shard.view.append(addr)
         shard.master_view.append(addr)
-    viewlist = list()
-    for addr in shard.view:
-        if addr is None:
-            viewlist.append('')
-        else: viewlist.append(str(addr))
-    popdata = {"store": json.dumps(store), "view": json.dumps(viewlist), "causal-metadata":str(vc.vc)}
-    requests.put(f"http://{str(addr)}/internal/populate", data=json.dumps(popdata))
-    shard.add_server_all(addr)
+    #viewlist = list()
+    #for addr in shard.view:
+    #    if addr is None:
+    #        viewlist.append('')
+    #    else: viewlist.append(str(addr))
+    #popdata = {"store": json.dumps(store), "view": json.dumps(viewlist), "causal-metadata":str(vc.vc)}
+    #requests.put(f"http://{str(addr)}/internal/populate", data=json.dumps(popdata))
+    #shard.add_server_all(addr)
     return ({"message":"Replica added successfully to the view"},201)
 
 
@@ -270,6 +270,53 @@ def get_shard_key_count(idx):
     else:
         return forward_req_shard(idx, request)
 
+@app.route('/key-value-store-shard/add-member/<int:shard_id>', methods=['PUT'])
+def add_member(shard_id):
+    if shard.get_my_shard() != shard_id:
+        return forward_req_shard(shard_id, request)
+
+    data = json.loads(request.get_data())
+
+    # Malformed Req
+    if not ("socket-address" in data):
+        abort(400)
+
+    addr = None
+    try:
+        straddr = data["socket-address"]
+        spl = straddr.split(':')
+        addr = Address(spl[0], int(spl[1]))
+    except: abort(400)
+
+    # Check if it's already there
+    for serv in shard.shards[shard_id]:
+        if serv == addr:
+            return (  {  "error":"Socket address already exists in the shard"
+                      ,  "message":"Error in PUT"
+                      }
+                   ,  404
+                   )
+
+    # Add for everyone
+    shard.shards[shard_id].append(addr)
+    shard.internal_new_member_all(addr, shard_id)
+
+    # Populate
+    viewlist = list()
+    for addr in shard.view:
+        if addr is None:
+            viewlist.append('')
+        else: viewlist.append(str(addr))
+
+    shardlist = list()
+    for shard in shard.shards:
+        shardlist.append(list())
+        for serv in shard:
+            shardlist[-1].append(str(serv))
+    popdata = {'store': json.dumps(store), 'view':json.dumps(viewlist), 'causal-metadata':str(vc.vc), 'shards': json.dumps(shardlist)}
+
+    requests.put('http://' + str(addr) + '/internal/populate/', data=json.dumps(popdata))
+    return ({'message':'Node added successfully to shard'}, 200)
 
 
 # Internal -----------------------------------------------------------------
@@ -416,6 +463,18 @@ def get_data():
     # All together
     data = {"causal-metadata": str(vc.vc), 'view': json.dumps(view), 'data': json.dumps(store)}
     return json.dumps(data)
+
+
+@app.route('/internal/add-member/<int:shard_id>', methods=['PUT'])
+def int_add_member(shard_id:int):
+    try:
+        straddr = json.loads(request.get_data())['socket-address']
+        spl = straddr.split(':')
+        addr = Address(spl[0], int(spl[1]))
+        shard.shards[shard_id].append(addr)
+        return {'success': True}
+    except: pass
+    return {'success': False}
 
 
 # Helper -------------------------------------------------------------------
