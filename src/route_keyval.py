@@ -101,8 +101,9 @@ def get_key(key:str, force_outdated = False):
                     break
         if result is not None and result.status_code == 200:
             store[key] = json.loads(result.text)['value']
-            meta = json.loads(result.text)['causal-metadata']
-            vc.vc.max(vc.VectorClock(json.loads(meta[1])))
+            meta = json.loads(json.loads(result.text)['causal-metadata'])
+            if shard.get_my_shard() == int(meta[0]):
+                vc.vc.max(vc.VectorClock(json.loads(meta[1])))
 
     # Causal Metadata
     causal_meta = json.dumps([myidx, str(vc.vc)])
