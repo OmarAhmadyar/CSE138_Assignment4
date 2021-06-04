@@ -155,10 +155,10 @@ def int_add_member(shard_id:int):
         if not reinstate:
             shard.master_shards[shard_id].append(addr)
             shard.shards[shard_id].append(addr)
-            vc.vc.add()
+            if shard_id == shard.get_my_shard(): vc.vc.add()
         return {'success': True}
     except: pass
-    return {'success': False}
+    return {'success': False}, 400
 
 
 @route.app.route('/internal/add-member/YOU', methods=['PUT'])
@@ -174,6 +174,10 @@ def pop_yourself():
     shard.view = load_view(data['view'])
     shard.master_view = load_view(data['mview'])
 
+    # SHARDS
+    shard.shards = load_shards(json.loads(data['shards']))
+    shard.master_shards = load_shards(json.loads(data['mshards']))
+
     # STORE -- ONLY STORE THOSE WHICH BELONG TO YOU
     route_keyval.store.clear()
     ostore = json.loads(data['data'])
@@ -181,10 +185,6 @@ def pop_yourself():
     for key in ostore:
         if shard.get_shard_key(key) == myidx:
             route_keyval.store[key] = ostore[key]
-
-    # SHARDS
-    shard.shards = load_shards(json.loads(data['shards']))
-    shard.master_shards = load_shards(json.loads(data['mshards']))
 
     # VC
     meta = json.loads(data['causal-metadata'])
