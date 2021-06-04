@@ -77,7 +77,7 @@ def main():
 def add_self():
     time.sleep(1)
     data = None
-    for addr in shard.view:
+    for addr in shard.shards[shard.get_my_shard()]:
         if addr == shard.self: continue
         data = {'socket-address': str(shard.self)}
         try:
