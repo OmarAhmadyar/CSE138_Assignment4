@@ -45,7 +45,7 @@ async def internal_new_member_all_coroutine(add, shard_id):
             if addr is None: continue
             elif addr == self: continue
             elif addr == add: continue
-            tasks.append(asyncio.ensure_future(add_server_one(session, addr, add, shard_id)))
+            tasks.append(asyncio.ensure_future(internal_new_member_one(session, addr, add, shard_id)))
         results = await asyncio.gather(*tasks)
 
         # Invalidate anyone who failed
@@ -59,7 +59,7 @@ async def internal_new_member_all_coroutine(add, shard_id):
 
 
 async def internal_new_member_one(session, toserv, addr, shard_id):
-    data_ = json.dumps({"socket-address": str(add)})
+    data_ = json.dumps({"socket-address": str(addr)})
     try:
         async with async_timeout.timeout(atimeout):
             async with session.put('http://'+str(toserv)+f'/internal/add-member/{str(shard_id)}', data=data_) as resp:
