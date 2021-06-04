@@ -25,6 +25,7 @@ def put_key(key:str):
     elif "value" in data: val = data["value"]
     else: return ({"error" : "Value is missing", "message" : "Error in PUT"}, 400)
 
+
     # See if client provided vector clock
     myidx = shard.get_my_shard()
     recv_vc = None
@@ -47,7 +48,7 @@ def put_key(key:str):
     if (recv_vc is None) or (not (recv_vc < vc.vc)):
         store[key] = val
         shard.put_all(key, val)
-        index = shard.view.index(shard.self)
+        index = shard.shards[shard.get_my_shard()].index(shard.self)
         vc.vc.clock[index] += 1
 
     good['causal-metadata'] = json.dumps([myidx, str(vc.vc)])
@@ -131,7 +132,7 @@ def delete_key(key:str):
     # If put is in our causal past, then ignore it
     deleted = False
     if (recv_vc is None) or (not (recv_vc < vc.vc)):
-        index = shard.view.index(shard.self)
+        index = shard.shards[shard.get_my_shard()].index(shard.self)
         if key in store:
             deleted = True
             vc.vc.clock[index] += 1
