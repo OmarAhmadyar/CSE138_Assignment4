@@ -21,7 +21,7 @@ def get_shard_ids():
 @route.app.route('/key-value-store-shard/node-shard-id', methods=['GET'])
 def get_shard_id():
     return {'message': 'Shard ID of the node retrieved successfully'
-           ,'shard-id': str(shard.get_my_shard())}, 200
+           ,'shard-id': shard.get_my_shard()}, 200
 
 
 @route.app.route('/key-value-store-shard/shard-id-members/<int:idn>', methods=['GET'])
